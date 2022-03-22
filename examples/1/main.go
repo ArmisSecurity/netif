@@ -1,11 +1,18 @@
 package main
 
-import ni "github.com/Wifx/netif"
+import (
+	"fmt"
+
+	ni "github.com/xtmono/netif"
+)
 
 func main() {
-	is := ni.Parse(
+	is, err := ni.Parse(
 		ni.Path("input"),
 	)
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+	}
 
 	is.Write(
 		ni.Path("output"),

@@ -6,6 +6,7 @@ type InterfaceSet struct {
 	InterfacesReader
 
 	InterfacesPath string
+	Others         []string
 	Adapters       []*NetworkAdapter
 }
 

@@ -6,7 +6,7 @@ This package is heavily based on the Python library **Debinterface** [github.com
 
 ### Installation
 ```go
-go get github.com/hilt0n/netif
+go get github.com/xtmono/netif
 ```
 
 ### Basic usage
@@ -14,6 +14,6 @@ go get github.com/hilt0n/netif
 package main
 
 import (
-    "github.com/hilt0n/netif"
+    "github.com/xtmono/netif"
 )
 ```

@@ -2,71 +2,41 @@ package netif
 
 import (
 	"fmt"
+	"net"
 	"os"
 
 	"strings"
 
 	"github.com/n-marshall/fn"
-	cp "github.com/n-marshall/go-cp"
 )
 
-func BackupPath(path string) fn.Option {
-	return fn.MakeOption("backupPath", path)
-}
 func (is *InterfaceSet) Write(opts ...fn.Option) error {
 	fnConfig := fn.MakeConfig(
 		fn.Defaults{"path": "output"},
 		opts,
 	)
 	path := fnConfig.GetString("path")
-	backupPath := fnConfig.GetString("backupPath")
-
-	if backupPath == "" {
-		backupPath = path + ".backup"
-	}
-
-	// Backup interface file
-	err := copyFileIfExists(path, backupPath)
-	if err != nil {
-		return err
-	}
 
 	// try to open the interface file for writing
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0777)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		// Restore interface file
-		err := copyFileIfExists(backupPath, path)
-		if err != nil {
-			return err
-		}
-
 		return err
 	}
 	defer f.Close()
+
 	// write interface file
-	err = is.WriteToFile(f)
-	if err != nil {
-		// Restore interface file
-		err := copyFileIfExists(backupPath, path)
-		if err != nil {
-			return err
-		}
-	}
-
-	return err
-}
-
-func copyFileIfExists(path, backupPath string) error {
-	if _, err := os.Stat(path); err == nil {
-		err2 := cp.CopyFile(path, backupPath)
-		if err2 != nil {
-			return err
-		}
-	}
-	return nil
+	return is.WriteToFile(f)
 }
 
 func (is *InterfaceSet) WriteToFile(f *os.File) error {
+	fmt.Fprintf(f, "# interfaces(5) file used by ifup(8) and ifdown(8)\n"+
+		"# Include files from /etc/network/interfaces.d:\n")
+
+	for _, other := range is.others {
+		fmt.Fprintln(f, other)
+	}
+	fmt.Fprintln(f)
+
 	for _, adapter := range is.Adapters {
 		adapterString, err := adapter.writeString()
 		if err != nil {
@@ -86,18 +56,15 @@ func (a *NetworkAdapter) writeString() (string, error) {
 		lines = append(lines, fmt.Sprintf("allow-hotplug %s", a.Name))
 	}
 
-	lines = append(lines, a.writeAddressFamily())
-
-	if a.AddrSource == STATIC || a.AddrSource == MANUAL {
-		for _, line := range a.writeIPLines() {
-			lines = append(lines, line)
-		}
+	for _, ip := range a.IPs {
+		lines = append(lines, ip.writeAddressFamily(a.Name))
+		lines = append(lines, ip.writeIPLines()...)
 	}
 
 	return strings.Join(lines, "\n"), nil
 }
 
-func (a *NetworkAdapter) GetAddrFamilyString() string {
+func (a *NetworkIP) GetAddrFamilyString() string {
 	switch a.AddrFamily {
 	case INET:
 		return "inet"
@@ -107,7 +74,7 @@ func (a *NetworkAdapter) GetAddrFamilyString() string {
 	return "inet"
 }
 
-func (a *NetworkAdapter) GetSourceFamilyString() string {
+func (a *NetworkIP) GetSourceFamilyString() string {
 	switch a.AddrSource {
 	case DHCP:
 		return "dhcp"
@@ -121,27 +88,41 @@ func (a *NetworkAdapter) GetSourceFamilyString() string {
 	return "dhcp"
 }
 
-func (a *NetworkAdapter) writeAddressFamily() string {
+func (a *NetworkIP) writeAddressFamily(name string) string {
 	var familyStr = a.GetAddrFamilyString()
 	var sourceStr = a.GetSourceFamilyString()
-	return fmt.Sprintf("iface %s %s %s", a.Name, familyStr, sourceStr)
+	return fmt.Sprintf("iface %s %s %s", name, familyStr, sourceStr)
 }
 
-func (a *NetworkAdapter) writeIPLines() (lines []string) {
+func (a *NetworkIP) writeIPLines() (lines []string) {
 	if a.Address != nil {
-		lines = append(lines, fmt.Sprintf("    address %s", a.Address))
+		lines = append(lines, fmt.Sprintf("  address %s", a.Address))
 	}
 	if a.Netmask != nil {
-		lines = append(lines, fmt.Sprintf("    netmask %s", a.Netmask))
-	}
-	if a.Network != nil {
-		lines = append(lines, fmt.Sprintf("    network %s", a.Network))
+		if a.AddrFamily == INET6 {
+			prefix, _ := a.Netmask.Size()
+			lines = append(lines, fmt.Sprintf("  netmask %d", prefix))
+		} else {
+			lines = append(lines, fmt.Sprintf("  netmask %s", net.IP(a.Netmask)))
+		}
 	}
 	if a.Broadcast != nil {
-		lines = append(lines, fmt.Sprintf("    broadcast %s", a.Broadcast))
+		lines = append(lines, fmt.Sprintf("  broadcast %s", a.Broadcast))
+	}
+	if a.Network != nil {
+		lines = append(lines, fmt.Sprintf("  network %s", a.Network))
+	}
+	if a.Metric != nil {
+		lines = append(lines, fmt.Sprintf("  metric %d", *a.Metric))
 	}
 	if a.Gateway != nil {
-		lines = append(lines, fmt.Sprintf("    gateway %s", a.Gateway))
+		lines = append(lines, fmt.Sprintf("  gateway %s", a.Gateway))
+	}
+	if len(a.DNSNameServers) > 0 {
+		lines = append(lines, fmt.Sprintf("  dns-nameservers %s", a.DNSConcatString()))
+	}
+	for _, other := range a.Others {
+		lines = append(lines, fmt.Sprintf("  %s", other))
 	}
 	return
 }
