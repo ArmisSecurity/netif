@@ -121,6 +121,12 @@ func (a *NetworkIP) writeIPLines() (lines []string) {
 	if len(a.DNSNameServers) > 0 {
 		lines = append(lines, fmt.Sprintf("  dns-nameservers %s", a.DNSConcatString()))
 	}
+	if a.WiFiName != "" {
+		lines = append(lines, fmt.Sprintf("  wpa-ssid %s", a.WiFiName))
+	}
+	if a.WiFiPassword != "" {
+		lines = append(lines, fmt.Sprintf("  wpa-psk %s", a.WiFiPassword))
+	}
 	for _, other := range a.Others {
 		lines = append(lines, fmt.Sprintf("  %s", other))
 	}
