@@ -41,6 +41,8 @@ type NetworkIP struct {
 	Metric         *int
 	Gateway        net.IP
 	DNSNameServers []net.IP
+	WiFiName       string
+	WiFiPassword   string
 	Others         []string
 }
 
@@ -182,6 +184,17 @@ func (na *NetworkIP) SetDNSNameServers(address string) error {
 	}
 	return err
 }
+
+func (na *NetworkIP) SetWifiName(name string) error {
+	na.WiFiName = name
+	return nil
+}
+
+func (na *NetworkIP) SetWifiPassword(password string) error {
+	na.WiFiPassword = password
+	return nil
+}
+
 func (na *NetworkIP) SetOthers(address string) error {
 	na.Others = append(na.Others, address)
 	return nil

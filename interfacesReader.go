@@ -211,6 +211,14 @@ func (ir *InterfacesReader) parseDetails(line string, iface *string) error {
 				return err
 			}
 		}
+	case "wpa-ssid":
+		if err := ip.SetWifiName(sline[1]); err != nil {
+			return err
+		}
+	case "wpa-psk":
+		if err := ip.SetWifiPassword(sline[1]); err != nil {
+			return err
+		}
 	default:
 		if err := ip.SetOthers(line); err != nil {
 			return err
