@@ -163,6 +163,8 @@ func (ir *InterfacesReader) parseDetails(line string, iface *string) error {
 		sline[0] != "vendor" &&
 		sline[0] != "client" &&
 		sline[0] != "dns-nameservers" && // options
+		sline[0] != "wpa-ssid" && // options
+		sline[0] != "wpa-psk" && // options
 		sline[0] != "dns-domain" &&
 		sline[0] != "dns-search" &&
 		sline[0] != "up" &&
